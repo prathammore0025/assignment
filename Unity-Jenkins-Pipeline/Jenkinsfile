@@ -1,0 +1,91 @@
+def PROJECT_NAME = "Slot-Vikings"
+def UNITY_VERSION = "2022.3.48f1"
+def UNITY_INSTALLATION = "C:\\Program Files\\Unity\\Hub\\Editor\\${UNITY_VERSION}\\Editor\\Unity.exe"
+def REPO_URL = "git@github.com:DingDingHouse/Slot-Vikings.git"
+
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+    }
+
+    environment {
+        PROJECT_PATH = "D:\\Slot-Vikings"
+        S3_BUCKET = "vikingsbucket"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    bat """
+                    cd /d D:\\
+                    git config --global http.postBuffer 3221225472
+                    IF NOT EXIST "D:\\Slot-Vikings\\.git" (
+                        git clone ${REPO_URL} Slot-Vikings
+                    ) ELSE (
+                        cd Slot-Vikings && git fetch origin && git checkout develop && git pull origin develop
+                    )
+                    """
+                }
+            }
+        }
+
+        stage('Build WebGL') {
+            steps {
+                script {
+                    withEnv(["UNITY_PATH=${UNITY_INSTALLATION}"]) {
+                        bat """
+                        "%UNITY_PATH%" -quit -batchmode -projectPath "%PROJECT_PATH%" -executeMethod BuildScript.BuildWebGL -logFile -
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Push Build to GitHub') {
+            steps {
+                script {
+                    dir("${PROJECT_PATH}") {
+                        bat """
+                        git checkout develop
+                        git add Builds
+                        git commit -m "new build" || echo "No changes to commit."
+                        git push origin develop
+
+                        git checkout artifact
+                        git rm -rf Build Builds index.html
+                        git commit -m "delete old Builds" || echo "Nothing to delete."
+                        git push origin artifact
+
+                        git checkout develop -- Builds
+                        robocopy Builds\\WebGL\\ .\\ /move /e /copyall
+
+                        git rm -rf Builds
+                        git add -f Build index.html
+                        git commit -m "adding new Builds" || echo "No changes to commit."
+                        git push origin artifact
+
+                        git checkout develop
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to S3') {
+            steps {
+                script {
+                    dir("${PROJECT_PATH}") {
+                        bat """
+                        aws s3 cp "Builds/WebGL/" s3://%S3_BUCKET%/ --recursive --acl public-read
+                        aws s3 cp "Builds/WebGL/index.html" s3://%S3_BUCKET%/index.html --acl public-read
+                        aws s3 website s3://%S3_BUCKET%/ --index-document index.html --error-document index.html
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
