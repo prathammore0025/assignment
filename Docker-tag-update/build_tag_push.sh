@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Configurable variables
-DOCKER_USERNAME="your-dockerhub-username"
+DOCKER_USERNAME="prathammore0025"
 REPOSITORY_NAME="node"
 IMAGE_NAME="${DOCKER_USERNAME}/${REPOSITORY_NAME}"
 VERSION_PREFIX="v"
-DEPLOYMENT_FILE="./k8s/deployment.yaml"  # Adjust path if needed
+DEPLOYMENT_FILE="./k8s/deployment.yaml"  
 
 # Get the latest version tag from Docker Hub
 LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/${DOCKER_USERNAME}/${REPOSITORY_NAME}/tags?page_size=100" | jq -r '.results[].name' | grep -E "^${VERSION_PREFIX}[0-9]+$" | sort -V | tail -n 1)
