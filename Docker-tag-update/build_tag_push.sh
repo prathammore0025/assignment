@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Configurable variables
-DOCKER_USERNAME="prathammore0025"
+DOCKER_USERNAME=$DOCKER_USERNAME
+DOCKER_PASSWORD=$DOCKER_PASSWORD
 REPOSITORY_NAME="node"
 IMAGE_NAME="${DOCKER_USERNAME}/${REPOSITORY_NAME}"
 VERSION_PREFIX="v"
@@ -21,6 +22,9 @@ fi
 # Build and tag Docker image
 docker build -t ${IMAGE_NAME}:latest .
 docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${NEW_VERSION}
+
+# Log in to Docker Hub
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 # Push the new image to Docker Hub
 docker push ${IMAGE_NAME}:${NEW_VERSION}
